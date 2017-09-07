@@ -1,0 +1,327 @@
+
+
+//1.0版本的所有
+var WeinApiList = ["onMenuShareTimeline",
+"onMenuShareAppMessage",
+"onMenuShareQQ",
+"onMenuShareWeibo",
+"startRecord",
+"stopRecord",
+"onVoiceRecordEnd",
+"playVoice",
+"pauseVoice",
+"stopVoice",
+"onVoicePlayEnd",
+"uploadVoice",
+"downloadVoice",
+"chooseImage",
+"previewImage",
+"uploadImage",
+"downloadImage",
+"translateVoice",
+"getNetworkType",
+"openLocation",
+"getLocation",
+"hideOptionMenu",
+"showOptionMenu",
+"hideMenuItems",
+"showMenuItems",
+"hideAllNonBaseMenuItem",
+"showAllNonBaseMenuItem",
+"closeWindow",
+"scanQRCode",
+"chooseWXPay",
+"openProductSpecificView",
+"addCard",
+"chooseCard",
+"openCard"
+];
+
+var WeiXinJsHelper = (function () {
+
+    //微信jshelper
+    function SetJSsignature(_publicNum) {
+        $.ajax({
+            type: "POST",
+            async: false,  //异步
+            url: "/handler/WeiXinJSHandler.ashx?num=" + Math.round(),    //url地址
+            data: { "type": "getSignature", "pageurl": location.href.split('#')[0], "publicNum": _publicNum },  //参数 
+            dataType: "json",
+            success: function (rs) {
+                if (rs.State == 200) {
+                    wx.config({
+                        debug: false,
+                        appId: rs.JsonResult.appid,
+                        timestamp: parseInt(rs.JsonResult.timestamp),
+                        nonceStr: rs.JsonResult.noncestr,
+                        signature: rs.JsonResult.signatureStr,
+                        jsApiList: WeinApiList
+                    });
+                }
+            },
+            error: function (a, b, c) {
+
+            }
+        });
+    }
+
+    //微信jshelper
+    function GetApiTicket(_publicNum, _cardID,_cardType, sucBack) {
+        $.ajax({
+            type: "POST",
+            async: false,  //异步
+            url: "/handler/WeiXinJSHandler.ashx?num=" + Math.round(),    //url地址
+            data: { "type": "apiticket", "cardid": _cardID, "card_type": _cardType, "publicNum": _publicNum },  //参数 
+            dataType: "json",
+            success: function (rs) {
+                if (rs.State == 200) {
+                    sucBack(rs.JsonResult);
+                }
+            },
+            error: function (a, b, c) {
+
+            }
+        });
+    }
+
+    //微信jshelper
+    function chooseCard(_info, sucback) {
+        wx.ready(function () {
+            wx.chooseCard({
+                shopId: _info.shopId, // 门店Id
+                cardType: _info.cardType, // 卡券类型
+                cardId: _info.cardId, // 卡券Id
+                timestamp: _info.timestamp, // 卡券签名时间戳
+                nonceStr: _info.nonceStr, // 卡券签名随机串
+                signType: 'SHA1', // 签名方式，默认'SHA1'
+                cardSign: _info.cardSign, // 卡券签名
+                success: function (res) {
+                    var cardList = res.cardList; // 用户选中的卡券列表信息
+                    sucback(cardList);
+                }
+            });
+        });
+    }
+
+    //微信jshelper
+    function addCard(cardID, cardEXT) {
+        wx.ready(function () {
+            wx.addCard({
+                cardList: [{
+                    cardId: cardID,
+                    cardExt: cardEXT
+                }], // 需要添加的卡券列表
+                success: function (res) {
+                    var cardList = res.cardList; // 添加的卡券列表信息
+                }
+            });
+        });
+    }
+
+    function getlocation(_callback) {
+        wx.ready(function () {
+            wx.getLocation({
+                success: function (res) {
+                    var longitude = res.longitude; // 纬度，浮点数，范围为90 ~ -90
+                    var latitude = res.latitude; // 经度，浮点数，范围为180 ~ -180。
+                    var speed = res.speed; // 速度，以米/每秒计
+                    var accuracy = res.accuracy; // 位置精度
+                    _callback(latitude, longitude);
+                }
+            });
+        });
+    }
+
+    function previewImage(imgUrlList) {
+        if (imgUrlList.length > 0) {
+            wx.ready(function () {
+                wx.previewImage({
+                    current: imgUrlList[0], // 当前显示的图片链接
+                    urls: imgUrlList // 需要预览的图片链接列表
+                });
+            });
+        }
+    }
+
+    function showOptionMenu() {
+        wx.ready(function () {
+            wx.showOptionMenu();
+        });
+    }
+
+    function hideOptionMenu() {
+        wx.ready(function () {
+            wx.hideOptionMenu();
+        });
+    }
+
+    function showToolbar() {
+        wx.ready(function () {
+            wx.showAllNonBaseMenuItem();
+        });
+    }
+
+    function hideToolbar() {
+        wx.ready(function () {
+            wx.hideAllNonBaseMenuItem();
+        });
+    }
+
+
+    function startRecord() {
+        wx.ready(function () {
+            wx.startRecord();
+        });
+    }
+
+
+    function stopRecord(_succallback) {
+        wx.ready(function () {
+            wx.stopRecord({
+                success: function (res) {
+                    var localId = res.localId;
+                    // 用户确认分享后执行的回调函数
+                    if (typeof (_succallback) == "function")
+                        _succallback(res);
+                }
+            });
+        });
+    }
+    function uploadVoice(data, _succallback) {
+        wx.ready(function () {
+            wx.uploadVoice({
+                localId: data.localId, // 需要上传的音频的本地ID，由stopRecord接口获得
+                isShowProgressTips: data.isShowProgressTips, // 默认为1，显示进度提示
+                success: function (res) {
+                    var serverId = res.serverId; // 返回音频的服务器端ID
+                    if (typeof (_succallback) == "function")
+                        _succallback(res);
+                }
+            });
+        });
+    }
+
+    //分享到朋友圈
+    function ShareFriendCircle(data, _succallback, _errcallback) {
+        wx.ready(function () {
+            wx.onMenuShareTimeline({
+                title: data.title, // 分享标题
+                link: data.link, // 分享链接
+                imgUrl: data.imgUrl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    if (typeof (_succallback) == "function")
+                        _succallback();
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    if (typeof (_errcallback) == "function")
+                        _errcallback();
+                }
+            });
+        });
+    }
+
+    //分享给朋友
+    function ShareFriend(data, _succallback, _errcallback) {
+        wx.ready(function () {
+            wx.onMenuShareAppMessage({
+                title: data.title, // 分享标题
+                desc: data.desc, // 分享描述
+                link: data.link, // 分享链接
+                imgUrl: data.imgUrl, // 分享图标
+                type: data.type, // 分享类型,music、video或link，不填默认为link
+                dataUrl: data.dataUrl, // 如果type是music或video，则要提供数据链接，默认为空
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    if (typeof (_succallback) == "function")
+                        _succallback();
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    if (typeof (_errcallback) == "function")
+                        _errcallback();
+
+                }
+            });
+        });
+    }
+
+
+    //分享给qq
+    function ShareQQ(data, _succallback, _errcallback) {
+        wx.ready(function () {
+            wx.onMenuShareQQ({
+                title: data.title, // 分享标题
+                desc: data.desc, // 分享描述
+                link: data.link, // 分享链接
+                imgUrl: data.imgUrl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    if (typeof (_succallback) == "function")
+                        _succallback();
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    if (typeof (_errcallback) == "function")
+                        _errcallback();
+                }
+            });
+        });
+    }
+
+
+    //分享给微博
+    function ShareWeibo(data, _succallback, _errcallback) {
+        wx.ready(function () {
+            wx.onMenuShareWeibo({
+                title: data.title, // 分享标题
+                desc: data.desc, // 分享描述
+                link: data.link, // 分享链接
+                imgUrl: data.imgUrl, // 分享图标
+                success: function () {
+                    // 用户确认分享后执行的回调函数
+                    if (typeof (_succallback) == "function")
+                        _succallback();
+                },
+                cancel: function () {
+                    // 用户取消分享后执行的回调函数
+                    if (typeof (_errcallback) == "function")
+                        _errcallback();
+                }
+            });
+        });
+    }
+
+    ///分享全部的
+    function ShareAll(data, _succallback, _errcallback) {
+        wx.ready(function () {
+            ShareQQ(data, _succallback, _errcallback);
+            ShareFriendCircle(data, _succallback, _errcallback);
+            ShareFriend(data, _succallback, _errcallback);
+            ShareWeibo(data, _succallback, _errcallback);
+        });
+    }
+
+    return {
+        getApiTicket: GetApiTicket,
+        AddCard: addCard,
+        ChooseCard: chooseCard,
+        Init: SetJSsignature, //初始化
+        GetlocationPoint: getlocation, //获取地理位置坐标
+        previewImage: previewImage,
+        ShareFriendCircle: ShareFriendCircle, //分享到朋友圈
+        ShareQQ: ShareQQ, //分享到qq
+        ShareAll: ShareAll, //分享全部的
+        ShareWeibo: ShareWeibo, //分享到微博
+        ShareFriend: ShareFriend, //分享给朋友
+        showOptionMenu: showOptionMenu, //显示菜单
+        hideOptionMenu: hideOptionMenu, //隐藏菜单
+        showToolbar: showToolbar, //显示所有功能按钮接口
+        hideToolbar: hideToolbar, //, //隐藏所有功能按钮接口
+        startRecord: startRecord, //getNetworkType: getNetworkType//获取网络状态
+        stopRecord: stopRecord,
+        uploadVoice: uploadVoice
+    };
+
+})();
